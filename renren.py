@@ -2,6 +2,7 @@
 
 import logging
 import urllib
+import hashlib
 from tornado import httpclient
 from tornado import gen
 from tornado.escape import json_decode
@@ -151,7 +152,51 @@ class RenrenGraphMixin(object):
 
 
 class RenrenRestMixin(object):
-    _REST_SERVER = 'http://api.renren.com/restserver.do'
+    """
+    API document at http://wiki.dev.renren.com/wiki/API
 
-    def renren_request(self, path, **args):
-        pass
+    use renren_request to get resource. you need not specify paramters of 'v', 'format',
+    'sig', they were built in.
+    """
+    _REST_SERVER = 'http://api.renren.com/restserver.do'
+    _VERSION = '1.0'
+
+    @gen.engine
+    def renren_request(self, callback, **args):
+        args.update({'v' : self._VERSION, 'format':'JSON'})
+        token = self._oauth_consumer_token()
+
+        args = self._generate_signature(token['client_secret'], **args)
+
+        http = httpclient.AsyncHTTPClient()
+        http.fetch(self._REST_SERVER, method='POST', body=urllib.urlencode(args),
+                   callback=(yield gen.Callback('_RenrenRestMixin.renren_request')))
+        response = yield gen.Wait('_RenrenRestMixin.renren_request')
+
+        if response.error and not response.body:
+            logging.warning("Error response %s fetching %s", response.error,
+                    response.request.url)
+            callback(None)
+            return
+        if response.error:
+            logging.warning("Error response %s fetching %s: %s", response.error,
+                    response.request.url, response.body)
+        result = json_decode(response.body)
+        callback(result)
+        return
+
+    def _generate_signature(self, secret, **args):
+        s = ''
+        for key in sorted(args):
+            s += '%s=%s' % (key, args[key])
+        s += secret
+        sig = hashlib.md5(s).hexdigest()
+        args.update({'sig':sig})
+        return args
+
+    def _oauth_consumer_token(self):
+        self.require_setting("renren_client_id", "Renren Client ID")
+        self.require_setting("renren_client_secret", "Renren Client Secret")
+        token = dict(client_id=self.settings["renren_client_id"],
+                     client_secret=self.settings["renren_client_secret"])
+        return token
