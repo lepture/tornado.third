@@ -12,12 +12,30 @@ class RenrenGraphMixin(object):
     _OAUTH_AUTHORIZE_URL = "https://graph.renren.com/oauth/authorize"
     _OAUTH_ACCESS_TOKEN_URL = "https://graph.renren.com/oauth/token"
 
-    _API_URL = 'http://api.renren.com/restserver.do'
+    _OAUTH_URL = "https://graph.renren.com/"
 
-    
-    def renren_request(self, path, args):
-        #TODO
-        pass
+    @gen.engine
+    def renren_request(self, path, access_token, callback, post_args=None, **args):
+        http = httpclient.AsyncHTTPClient()
+        url = self._OAUTH_URL + path
+        if post_args:
+            #TODO as renren has not release graph resource support
+            # method POST
+            pass
+        else:
+            args.update({'oauth_token': access_token})
+            http.fetch(
+                url_concat(url, args),
+                callback=(yield gen.Callback('_RenrenGraphMixin.renren_request'))
+            )
+        response = yield gen.Wait('_RenrenGraphMixin.renren_request')
+        if response.error and not response.body:
+            logging.warning("Error response %s fetching %s", response.error,
+                    response.request.url)
+            callback(None)
+            return
+        callback(response)
+        return
 
     @gen.engine
     def get_authenticated_user(self, redirect_uri, callback, scope=None, **args):
@@ -41,31 +59,44 @@ class RenrenGraphMixin(object):
             self.authorize_redirect(redirect_uri, scope=scope, **args)
             return
         self.get_access_token(
-            code, callback=(yield gen.Callback('_RenrenMixin.get_authenticated_user')),
+            code, callback=(yield gen.Callback('_RenrenGraphMixin.get_authenticated_user')),
             redirect_uri=redirect_uri)
 
-        response = yield gen.Wait('_RenrenMixin.get_authenticated_user')
-
-        if response.error and not response.body:
-            logging.warning("Error response %s fetching %s", response.error,
-                    response.request.url)
+        response = yield gen.Wait('_RenrenGraphMixin.get_authenticated_user')
+        if not response:
             callback(None)
             return
-
         try:
             user = json_decode(response.body)
         except:
             logging.warning("Error response %s fetching %s", response.body,
                     response.request.url)
+            callback(None)
             return
         if 'error' in user:
             logging.warning("Error response %s fetching %s", user['error_description'],
                     response.request.url)
             callback(None)
             return
+
+        #{{{ get session key
+        self.renren_request('renren_api/session_key', user['access_token'],
+                            callback=(yield gen.Callback('_RenrenGraphMixin._session_key')))
+        response = yield gen.Wait('_RenrenGraphMixin._session_key')
+        if response.error and not response.body:
+            logging.warning("Error response %s fetching %s", response.error,
+                    response.request.url)
+        elif response.error:
+            logging.warning("Error response %s fetching %s: %s", response.error,
+                    response.request.url, response.body)
+        else:
+            try:
+                user['session'] = json_decode(response.body)
+            except:
+                pass
+        #}}} #TODO delete when renren graph api released
         callback(user)
         return
-
 
     def authorize_redirect(self, redirect_uri, response_type='code', scope=None, **args):
         consumer_token = self._oauth_consumer_token()
@@ -99,8 +130,15 @@ class RenrenGraphMixin(object):
 
         http = httpclient.AsyncHTTPClient()
         http.fetch(url_concat(self._OAUTH_ACCESS_TOKEN_URL, args),
-                   callback=(yield gen.Callback('_RenrenMixin.get_access_token')))
-        response = yield gen.Wait('_RenrenMixin.get_access_token')
+                   callback=(yield gen.Callback('_RenrenGraphMixin.get_access_token')))
+        response = yield gen.Wait('_RenrenGraphMixin.get_access_token')
+
+        if response.error and not response.body:
+            logging.warning("Error response %s fetching %s", response.error,
+                    response.request.url)
+            callback(None)
+            return
+
         callback(response)
         return
 
@@ -111,3 +149,9 @@ class RenrenGraphMixin(object):
                      client_secret=self.settings["renren_client_secret"])
         return token
 
+
+class RenrenRestMixin(object):
+    _REST_SERVER = 'http://api.renren.com/restserver.do'
+
+    def renren_request(self, path, **args):
+        pass
