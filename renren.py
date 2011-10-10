@@ -3,6 +3,7 @@
 import logging
 import urllib
 from tornado import httpclient
+from tornado import gen
 from tornado.escape import json_decode
 from tornado.httputil import url_concat
 
@@ -48,6 +49,7 @@ class RenrenGraphMixin(object):
         code = self.get_argument('code')
         return self.get_access_token(callback, code, 'code', redirect_uri)
 
+    @gen.engine
     def get_access_token(self, callback, code, grant_type='code', redirect_uri=None):
         if grant_type == 'refresh_token':
             args = {
@@ -65,16 +67,17 @@ class RenrenGraphMixin(object):
             return
         args.update(self._oauth_consumer_token())
 
-        callback = self.async_callback(self._on_get_access_token, callback)
         http = httpclient.AsyncHTTPClient()
-        http.fetch(url_concat(self._OAUTH_ACCESS_TOKEN_URL, args), callback=callback)
+        http.fetch(url_concat(self._OAUTH_ACCESS_TOKEN_URL, args),
+                   callback=(yield gen.Callback('renren.get_access_token')))
+        response = yield gen.Wait('renren.get_access_token')
 
-    def _on_get_access_token(self, callback, response):
         if response.error:
             logging.warning("Error response %s fetching %s", response.error,
                     response.request.url)
             callback(None)
             return
+
         res = json_decode(response.body)
         if 'error' in res:
             logging.warning("Error response %s fetching %s", res['error_description'],
@@ -82,6 +85,7 @@ class RenrenGraphMixin(object):
             callback(None)
             return
         callback(res)
+        return
 
     def _oauth_consumer_token(self):
         self.require_setting("renren_client_id", "Renren Client ID")
