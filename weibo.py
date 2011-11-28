@@ -26,13 +26,13 @@ class WeiboMixin(OAuth2Mixin):
                   if self.get_argument("code", False):
                       self.get_authenticated_user(
                           redirect_uri='/auth/weibo/',
-                          client_id=self.settings["weibo_api_key"],
-                          client_secret=self.settings["weibo_secret"],
+                          client_id=self.settings["weibo_client_id"],
+                          client_secret=self.settings["weibo_client_secret"],
                           code=self.get_argument("code"),
                           callback=self.async_callback(self._on_login))
                       return
                   self.authorize_redirect(redirect_uri='/auth/weibo/',
-                                        client_id=self.settings["weibo_api_key"],
+                                        client_id=self.settings["weibo_client_id"],
                                         extra_params={"response_type": "code"})
               def _on_login(self, user):
                   logging.error(user)
