@@ -33,8 +33,7 @@ class WeiboMixin(OAuth2Mixin):
                       return
                   self.authorize_redirect(redirect_uri='/auth/weibo/',
                                         client_id=self.settings["weibo_api_key"],
-                                        extra_params={"scope": "read_stream,offline_access"})
-
+                                        extra_params={"response_type": "code"})
               def _on_login(self, user):
                   logging.error(user)
                   self.finish()
