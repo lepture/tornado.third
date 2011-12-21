@@ -155,12 +155,12 @@ class WeiboMixin(OAuth2Mixin):
                     # ...
                     f = open('foo.png', 'r') # open the image file
                     pic = {
-                        'filename': 'foo.png',
+                        'filename': 'foo.png', # must present, but the value does not matter
                         'content': f.read(),
                         'mime_type': 'image/png'
                     }
                     f.close()
-                    result = yield tornado.gen.Task(self.weibo_request, 'statuses/upload',
+                    result = yield tornado.gen.Task(self.weibo_request, '/statuses/upload.json',
                         access_token=self.current_user["access_token"],
                         status='I like this photo!',
                         pic=pic
