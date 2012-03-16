@@ -37,6 +37,29 @@ from tornado.options import options
 
 
 class RecaptchaMixin(object):
+    """Recaptcha for signup:
+
+        class SignupHandler(BaseHandler, RecaptchaMixin):
+            def get(self):
+                self.write('<form method="post" action="">')
+                self.write(self.xsrf_form_html())
+                self.write(self.recaptcha_render())
+                self.write('<button type="submit">Submit</button>')
+                self.write('</form>')
+
+            @asynchronous
+            def post(self):
+                self.recaptcha_validate(self._on_validate)
+
+            def _on_validate(self, response):
+                if response:
+                    self.write('success')
+                    self.finish()
+                    return
+                self.write('failed')
+                self.finish()
+    """
+
     RECAPTCHA_VERIFY_URL = "http://www.google.com/recaptcha/api/verify"
 
     def recaptcha_render(self):
