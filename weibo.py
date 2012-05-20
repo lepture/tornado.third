@@ -7,8 +7,8 @@ import mimetools
 import itertools
 
 from tornado import escape
-from tornado.httputil import url_concat
 from tornado.auth import httpclient, OAuth2Mixin
+
 
 class WeiboMixin(OAuth2Mixin):
     """Weibo authentication using OAuth2."""
@@ -53,7 +53,8 @@ class WeiboMixin(OAuth2Mixin):
         post_args.update({"grant_type": "authorization_code"})
 
         fields = set(['uid'])
-        if extra_fields: fields.update(extra_fields)
+        if extra_fields:
+            fields.update(extra_fields)
 
         http.fetch(
             self._oauth_request_token_url(**args),
@@ -82,7 +83,6 @@ class WeiboMixin(OAuth2Mixin):
             access_token=session["access_token"],
         )
 
-
     def _on_get_user_id(self, callback, session, fields, user):
         if user is None:
             callback(None)
@@ -107,9 +107,11 @@ class WeiboMixin(OAuth2Mixin):
         for field in fields:
             fieldmap[field] = user.get(field)
 
-        fieldmap.update({"access_token": session["access_token"], "session_expires": session.get("expires_in")})
+        fieldmap.update(dict(
+            access_token=session["access_token"],
+            session_expires=session.get("expires_in"))
+        )
         callback(fieldmap)
-
 
     def weibo_request(self, path, callback, access_token=None,
                       post_args=None, **args):
@@ -177,7 +179,8 @@ class WeiboMixin(OAuth2Mixin):
             all_args["access_token"] = access_token
             all_args.update(args)
             all_args.update(post_args or {})
-        if all_args: url += "?" + urllib.urlencode(all_args)
+        if all_args:
+            url += "?" + urllib.urlencode(all_args)
         callback = self.async_callback(self._on_weibo_request, callback)
         http = httpclient.AsyncHTTPClient()
         if post_args is not None:
@@ -193,7 +196,6 @@ class WeiboMixin(OAuth2Mixin):
             callback(None)
             return
         callback(escape.json_decode(response.body))
-
 
     def _weibo_upload_request(self, url, callback,
                               access_token, pic, status=None):
