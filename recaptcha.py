@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2012, lepture.com
+# Copyright (c) 2012, Hsiaoming Yang
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,15 +31,25 @@
 
 import logging
 import urllib
-
-from tornado.auth import httpclient
+from tornado import httpclient
 from tornado.options import options
 
 
 class RecaptchaMixin(object):
-    """Recaptcha for signup:
+    """RecaptchaMixin
 
-        class SignupHandler(BaseHandler, RecaptchaMixin):
+    You must define some options for this mixin. All information
+    can be found at http://www.google.com/recaptcha
+
+    A basic example::
+
+        from tornado.options import define
+        from tornado.web import RequestHandler, asynchronous
+        define('recaptcha_key', 'key')
+        define('recaptcha_secret', 'secret')
+        define('recaptcha_theme', 'clean')
+
+        class SignupHandler(RequestHandler, RecaptchaMixin):
             def get(self):
                 self.write('<form method="post" action="">')
                 self.write(self.xsrf_form_html())
