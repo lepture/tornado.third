@@ -74,11 +74,15 @@ class RecaptchaMixin(object):
 
     def recaptcha_render(self):
         token = self._recaptcha_token()
-        html = ('<div id="recaptcha_div"></div><script type="text/javascript" '
-                'src="http://www.google.com/recaptcha/api/js/recaptcha_ajax.js'
-                '"></script><script type="text/javascript">Recaptcha.create'
-                '("%(key)s", "recaptcha_div", {theme: "%(theme)s",callback:'
-                'Recaptcha.focus_response_field});</script>')
+        html = (
+            '<div id="recaptcha_div"></div>'
+            '<script type="text/javascript" '
+            'src="https://www.google.com/recaptcha/api/js/recaptcha_ajax.js">'
+            '</script><script type="text/javascript">'
+            'Recaptcha.create("%(key)s", "recaptcha_div", '
+            '{theme: "%(theme)s",callback:Recaptcha.focus_response_field});'
+            '</script>'
+        )
         return html % token
 
     def recaptcha_validate(self, callback):
